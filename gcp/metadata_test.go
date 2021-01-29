@@ -30,7 +30,7 @@ import (
 	"testing"
 
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	"github.com/vdemeester/k8s-pkg-credentialprovider"
 )
 
 func createProductNameFile() (string, error) {
