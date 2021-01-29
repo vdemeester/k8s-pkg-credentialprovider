@@ -28,7 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecr"
 
-	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
+	"github.com/vdemeester/k8s-pkg-credentialprovider"
 )
 
 const user = "foo"
