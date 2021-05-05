@@ -57,10 +57,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
-
-	utilnet "k8s.io/apimachinery/pkg/util/net"
 )
 
 type authDirective struct {
@@ -78,10 +75,7 @@ const userAgent = "kubernetes-credentialprovider-acr"
 
 const dockerTokenLoginUsernameGUID = "00000000-0000-0000-0000-000000000000"
 
-var client = &http.Client{
-	Transport: utilnet.SetTransportDefaults(&http.Transport{}),
-	Timeout:   time.Second * 10,
-}
+var client = &http.Client{}
 
 func receiveChallengeFromLoginServer(serverAddress string) (*authDirective, error) {
 	challengeURL := url.URL{
