@@ -7,7 +7,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.12
 	github.com/Azure/go-autorest/autorest/adal v0.9.5
 	github.com/Azure/go-autorest/autorest/to v0.3.0
-	github.com/aws/aws-sdk-go v1.35.24
+	github.com/aws/aws-sdk-go v1.39.4
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	k8s.io/api v0.21.0
