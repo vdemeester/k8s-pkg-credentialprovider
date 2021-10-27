@@ -22,8 +22,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
 )
+
+var flagDisableDockerProvider = pflag.Bool("disable-docker-provider", false,
+	"Disables the docker provider")
 
 // DockerConfigProvider is the interface that registered extensions implement
 // to materialize 'dockercfg' credentials.
@@ -70,6 +74,10 @@ type CachingDockerConfigProvider struct {
 
 // Enabled implements dockerConfigProvider
 func (d *defaultDockerConfigProvider) Enabled() bool {
+	if *flagDisableDockerProvider {
+		return false
+	}
+
 	return true
 }
 
