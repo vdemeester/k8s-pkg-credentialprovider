@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 set -u
@@ -20,5 +20,3 @@ newpkg="github.com/vdemeester/k8s-pkg-credentialprovider"
 
 find ./ -type f -name "*.go" \
   -exec sed -i '' "s,${oldpkg},${newpkg},g" {} \;
-
-
