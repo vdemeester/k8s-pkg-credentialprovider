@@ -19,4 +19,4 @@ oldpkg="k8s.io/kubernetes/pkg/credentialprovider"
 newpkg="github.com/vdemeester/k8s-pkg-credentialprovider"
 
 find ./ -type f -name "*.go" \
-  -exec sed -i '' "s,${oldpkg},${newpkg},g" {} \;
+  -exec sed -i "s,${oldpkg},${newpkg},g" {} \;
