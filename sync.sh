@@ -20,3 +20,5 @@ newpkg="github.com/vdemeester/k8s-pkg-credentialprovider"
 
 find ./ -type f -name "*.go" \
   -exec sed -i "s,${oldpkg},${newpkg},g" {} \;
+sed -i "s,\tk8s\.io/\(.*\) v.*,\tk8s.io/\1 v0.${tag#v1.},g" go.mod
+sed -i "s,\tk8s\.io/klog/v2 v.*,\tk8s\.io/klog/v2 v2.8.0,g" go.mod
