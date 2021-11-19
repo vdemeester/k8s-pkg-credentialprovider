@@ -19,6 +19,8 @@ package credentialprovider
 import (
 	"testing"
 	"time"
+
+	"github.com/spf13/pflag"
 )
 
 type testProvider struct {
@@ -76,4 +78,35 @@ func TestCachingProvider(t *testing.T) {
 	if provider.Count != 3 {
 		t.Errorf("Unexpected number of Provide calls: %v", provider.Count)
 	}
+}
+
+func TestCachingDockerConfigProvider_Enabled(t *testing.T) {
+	err := pflag.CommandLine.Parse([]string{})
+	if err != nil {
+		t.Errorf("Unexpected parsing error: %s", err)
+	}
+
+	provider := &CachingDockerConfigProvider{
+		Provider: &defaultDockerConfigProvider{},
+		Lifetime: 5 * time.Minute,
+	}
+
+	if !provider.Enabled() {
+		t.Errorf("Expected provider to be enabled, but it was disabledr")
+	}
+
+	err = pflag.CommandLine.Parse([]string{"--disable-docker-provider"})
+	if err != nil {
+		t.Errorf("Unexpected parsing error: %s", err)
+	}
+
+	provider = &CachingDockerConfigProvider{
+		Provider: &defaultDockerConfigProvider{},
+		Lifetime: 5 * time.Minute,
+	}
+
+	if provider.Enabled() {
+		t.Errorf("Expected provider to be disabled, but it was enabled")
+	}
+
 }
