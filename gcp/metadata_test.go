@@ -17,7 +17,6 @@ limitations under the License.
 package gcp
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -26,11 +25,10 @@ import (
 	"net/url"
 	"os"
 	"reflect"
-	"strings"
 	"testing"
 
+	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"github.com/vdemeester/k8s-pkg-credentialprovider"
 	"k8s.io/legacy-cloud-providers/gce/gcpcredential"
 )
 
@@ -54,10 +52,6 @@ func TestMetadata(t *testing.T) {
 	}
 	defer os.Remove(gceProductNameFile)
 	t.Run("productNameDependent", func(t *testing.T) {
-		t.Run("DockerKeyringFromGoogleDockerConfigMetadata",
-			DockerKeyringFromGoogleDockerConfigMetadata)
-		t.Run("DockerKeyringFromGoogleDockerConfigMetadataUrl",
-			DockerKeyringFromGoogleDockerConfigMetadataURL)
 		t.Run("ContainerRegistryNoServiceAccount",
 			ContainerRegistryNoServiceAccount)
 		t.Run("ContainerRegistryBasics",
@@ -72,145 +66,6 @@ func TestMetadata(t *testing.T) {
 	os.Remove(gceProductNameFile)
 	t.Run("AllProvidersNoMetadata",
 		AllProvidersNoMetadata)
-}
-
-func DockerKeyringFromGoogleDockerConfigMetadata(t *testing.T) {
-	t.Parallel()
-	registryURL := "hello.kubernetes.io"
-	email := "foo@bar.baz"
-	username := "foo"
-	password := "bar" // Fake value for testing.
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, password)))
-	sampleDockerConfig := fmt.Sprintf(`{
-   "https://%s": {
-     "email": %q,
-     "auth": %q
-   }
-}`, registryURL, email, auth)
-	const probeEndpoint = "/computeMetadata/v1/"
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Only serve the one metadata key.
-		if probeEndpoint == r.URL.Path {
-			w.WriteHeader(http.StatusOK)
-		} else if strings.HasSuffix(gcpcredential.DockerConfigKey, r.URL.Path) {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintln(w, sampleDockerConfig)
-		} else {
-			http.Error(w, "", http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	// Make a transport that reroutes all traffic to the example server
-	transport := utilnet.SetTransportDefaults(&http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			return url.Parse(server.URL + req.URL.Path)
-		},
-	})
-
-	keyring := &credentialprovider.BasicDockerKeyring{}
-	provider := &DockerConfigKeyProvider{
-		MetadataProvider: MetadataProvider{Client: &http.Client{Transport: transport}},
-	}
-
-	if !provider.Enabled() {
-		t.Errorf("Provider is unexpectedly disabled")
-	}
-
-	keyring.Add(provider.Provide(""))
-
-	creds, ok := keyring.Lookup(registryURL)
-	if !ok {
-		t.Errorf("Didn't find expected URL: %s", registryURL)
-		return
-	}
-	if len(creds) > 1 {
-		t.Errorf("Got more hits than expected: %s", creds)
-	}
-	val := creds[0]
-
-	if username != val.Username {
-		t.Errorf("Unexpected username value, want: %s, got: %s", username, val.Username)
-	}
-	if password != val.Password {
-		t.Errorf("Unexpected password value, want: %s, got: %s", password, val.Password)
-	}
-	if email != val.Email {
-		t.Errorf("Unexpected email value, want: %s, got: %s", email, val.Email)
-	}
-}
-
-func DockerKeyringFromGoogleDockerConfigMetadataURL(t *testing.T) {
-	t.Parallel()
-	registryURL := "hello.kubernetes.io"
-	email := "foo@bar.baz"
-	username := "foo"
-	password := "bar" // Fake value for testing.
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, password)))
-	sampleDockerConfig := fmt.Sprintf(`{
-   "https://%s": {
-     "email": %q,
-     "auth": %q
-   }
-}`, registryURL, email, auth)
-	const probeEndpoint = "/computeMetadata/v1/"
-	const valueEndpoint = "/my/value"
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Only serve the URL key and the value endpoint
-		if probeEndpoint == r.URL.Path {
-			w.WriteHeader(http.StatusOK)
-		} else if valueEndpoint == r.URL.Path {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintln(w, sampleDockerConfig)
-		} else if strings.HasSuffix(gcpcredential.DockerConfigURLKey, r.URL.Path) {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/text")
-			fmt.Fprint(w, "http://foo.bar.com"+valueEndpoint)
-		} else {
-			http.Error(w, "", http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	// Make a transport that reroutes all traffic to the example server
-	transport := utilnet.SetTransportDefaults(&http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			return url.Parse(server.URL + req.URL.Path)
-		},
-	})
-
-	keyring := &credentialprovider.BasicDockerKeyring{}
-	provider := &DockerConfigURLKeyProvider{
-		MetadataProvider: MetadataProvider{Client: &http.Client{Transport: transport}},
-	}
-
-	if !provider.Enabled() {
-		t.Errorf("Provider is unexpectedly disabled")
-	}
-
-	keyring.Add(provider.Provide(""))
-
-	creds, ok := keyring.Lookup(registryURL)
-	if !ok {
-		t.Errorf("Didn't find expected URL: %s", registryURL)
-		return
-	}
-	if len(creds) > 1 {
-		t.Errorf("Got more hits than expected: %s", creds)
-	}
-	val := creds[0]
-
-	if username != val.Username {
-		t.Errorf("Unexpected username value, want: %s, got: %s", username, val.Username)
-	}
-	if password != val.Password {
-		t.Errorf("Unexpected password value, want: %s, got: %s", password, val.Password)
-	}
-	if email != val.Email {
-		t.Errorf("Unexpected email value, want: %s, got: %s", email, val.Email)
-	}
 }
 
 func ContainerRegistryBasics(t *testing.T) {
@@ -423,12 +278,6 @@ func AllProvidersNoMetadata(t *testing.T) {
 	})
 
 	providers := []credentialprovider.DockerConfigProvider{
-		&DockerConfigKeyProvider{
-			MetadataProvider: MetadataProvider{Client: &http.Client{Transport: transport}},
-		},
-		&DockerConfigURLKeyProvider{
-			MetadataProvider: MetadataProvider{Client: &http.Client{Transport: transport}},
-		},
 		&ContainerRegistryProvider{
 			MetadataProvider: MetadataProvider{Client: &http.Client{Transport: transport}},
 		},

@@ -25,10 +25,10 @@ import (
 	"strings"
 	"time"
 
+	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/cloud-provider/credentialconfig"
 	"k8s.io/klog/v2"
-	"github.com/vdemeester/k8s-pkg-credentialprovider"
 	"k8s.io/legacy-cloud-providers/gce/gcpcredential"
 )
 
@@ -64,21 +64,6 @@ func init() {
 		Transport: tr,
 		Timeout:   metadataHTTPClientTimeout,
 	}
-	credentialprovider.RegisterCredentialProvider("google-dockercfg",
-		&credentialprovider.CachingDockerConfigProvider{
-			Provider: &DockerConfigKeyProvider{
-				MetadataProvider: MetadataProvider{Client: httpClient},
-			},
-			Lifetime: 60 * time.Second,
-		})
-
-	credentialprovider.RegisterCredentialProvider("google-dockercfg-url",
-		&credentialprovider.CachingDockerConfigProvider{
-			Provider: &DockerConfigURLKeyProvider{
-				MetadataProvider: MetadataProvider{Client: httpClient},
-			},
-			Lifetime: 60 * time.Second,
-		})
 
 	credentialprovider.RegisterCredentialProvider("google-container-registry",
 		// Never cache this.  The access token is already
@@ -92,18 +77,6 @@ func init() {
 // Compute Engine metadata.
 type MetadataProvider struct {
 	Client *http.Client
-}
-
-// DockerConfigKeyProvider is a DockerConfigProvider that reads its configuration from a specific
-// Google Compute Engine metadata key: 'google-dockercfg'.
-type DockerConfigKeyProvider struct {
-	MetadataProvider
-}
-
-// DockerConfigURLKeyProvider is a DockerConfigProvider that reads its configuration from a URL read from
-// a specific Google Compute Engine metadata key: 'google-dockercfg-url'.
-type DockerConfigURLKeyProvider struct {
-	MetadataProvider
 }
 
 // ContainerRegistryProvider is a DockerConfigProvider that provides a dockercfg with:
@@ -143,16 +116,6 @@ func onGCEVM() bool {
 // Enabled implements DockerConfigProvider for all of the Google implementations.
 func (g *MetadataProvider) Enabled() bool {
 	return onGCEVM()
-}
-
-// Provide implements DockerConfigProvider
-func (g *DockerConfigKeyProvider) Provide(image string) credentialprovider.DockerConfig {
-	return registryToDocker(gcpcredential.ProvideConfigKey(g.Client, image))
-}
-
-// Provide implements DockerConfigProvider
-func (g *DockerConfigURLKeyProvider) Provide(image string) credentialprovider.DockerConfig {
-	return registryToDocker(gcpcredential.ProvideURLKey(g.Client, image))
 }
 
 // runWithBackoff runs input function `f` with an exponential backoff.
